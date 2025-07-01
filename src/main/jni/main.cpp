@@ -5,7 +5,7 @@
 #include <vector>
 #include <string>
 #include <filesystem>
-#include <Windows.h>
+// #include <Windows.h>
 #include "encryption/common.h"
 #include "encryption/encrypt.h"
 #include "encryption/CTEA.h"
