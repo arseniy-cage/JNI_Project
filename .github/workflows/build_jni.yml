@@ -1,49 +1,80 @@
-name: Build JNI with NDK
+# Это имя твоего Workflow, оно будет отображаться на странице "Actions" на GitHub
+name: Build JNI with Android NDK r21e
 
+# Когда этот Workflow должен запускаться
 on:
+  # Запускается при каждом пуше (push) в ветку 'main'
   push:
     branches:
-      - main # Запускать этот workflow, когда что-то пушится в ветку 'main'
+      - main
+  # Запускается при каждом создании или обновлении Pull Request'а в ветку 'main'
   pull_request:
     branches:
-      - main # Запускать, когда создается pull request в ветку 'main'
+      - main
 
+# Определение задач (jobs), которые будут выполняться
 jobs:
-  build-jni:
-    runs-on: ubuntu-latest # Выбираем операционную систему: Ubuntu (Linux)
+  # Первая и единственная задача в этом Workflow
+  build-jni-library:
+    # Указываем, на какой операционной системе будет выполняться задача.
+    # ubuntu-latest - это текущая последняя версия Ubuntu, которая предоставляет GitHub.
+    runs-on: ubuntu-latest
 
+    # Шаги, которые будут выполняться в рамках задачи build-jni-library
     steps:
-    - name: Checkout repository # Шаг 1: Загружаем твой код из репозитория
-      uses: actions/checkout@v4
+    - name: Checkout repository code # Шаг 1: Загружаем твой код из репозитория на виртуальную машину GitHub Actions.
+      uses: actions/checkout@v4 # Используем официальное действие GitHub для клонирования репозитория.
 
-    - name: Set up Java Development Kit # Шаг 2: Устанавливаем Java (нужно для Android SDK, который скачает NDK)
-      uses: actions/setup-java@v4
+    - name: Set up Java Development Kit (JDK) # Шаг 2: Устанавливаем Java JDK. NDK для работы может требовать JDK.
+      uses: actions/setup-java@v4 # Используем официальное действие GitHub для настройки Java.
       with:
-        distribution: 'temurin'
-        java-version: '17'
+        distribution: 'temurin' # Рекомендуемая дистрибуция JDK.
+        java-version: '17' # Версия Java, которую будем использовать. JDK 11 или 17 обычно хорошо подходят.
 
-    - name: Set up Android SDK # Шаг 3: Устанавливаем Android SDK (он нужен для NDK)
-      uses: android-actions/setup-android@v3
+    - name: Set up Android SDK # Шаг 3: Устанавливаем Android SDK. Это нужно для Android NDK.
+      uses: android-actions/setup-android@v3 # Используем стороннее действие для установки Android SDK.
 
-    - name: Download and Unzip Android NDK r16b # Шаг 4: Скачиваем нужную версию NDK для Linux
+    - name: Download and Unzip Android NDK r21e # Шаг 4: Скачиваем и распаковываем нужную версию Android NDK.
       run: |
-        wget https://dl.google.com/android/repository/android-ndk-r16b-linux-x86_64.zip -O android-ndk.zip
+        # Мы выбрали NDK r21e, так как она хорошо совместима с ndk-build
+        # на современных системах и решает проблему с libncurses.so.5.
+        # Это официальная ссылка на NDK r21e для Linux (x86_64).
+        wget https://dl.google.com/android/repository/android-ndk-r21e-linux-x86_64.zip -O android-ndk.zip
+        # Распаковываем архив в домашнюю директорию пользователя.
         unzip android-ndk.zip -d "$HOME/android-ndk"
-        mv "$HOME/android-ndk/android-ndk-r16b" "$HOME/android-ndk/ndk-r16b"
+        # Переименовываем папку для удобства.
+        mv "$HOME/android-ndk/android-ndk-r21e" "$HOME/android-ndk/ndk-r21e"
+      # Заметь, что мы скачиваем версию для Linux (linux-x86_64.zip),
+      # так как GitHub Actions работает на Linux-машинах.
 
-    - name: Add NDK to PATH # Шаг 5: Добавляем NDK в системные пути, чтобы ndk-build был доступен
+    - name: Add NDK to PATH environment variable # Шаг 5: Добавляем путь к NDK в переменную окружения PATH.
       run: |
-        echo "ANDROID_NDK_HOME=$HOME/android-ndk/ndk-r16b" >> $GITHUB_ENV
-        echo "$HOME/android-ndk/ndk-r16b" >> $GITHUB_PATH
+        # Это позволяет выполнять команду 'ndk-build' из любого места,
+        # без указания полного пути к ней.
+        echo "ANDROID_NDK_HOME=$HOME/android-ndk/ndk-r21e" >> $GITHUB_ENV
+        echo "$HOME/android-ndk/ndk-r21e" >> $GITHUB_PATH
 
-    - name: Build JNI Project # Шаг 6: Запускаем компиляцию JNI!
+    - name: Build JNI Project # Шаг 6: Собственно, запускаем процесс компиляции твоего JNI-проекта!
       run: |
-        cd src/main # Переходим в папку, где лежит ваша папка 'jni'
-        ndk-build # NDK сам найдет Android.mk и Application.mk в src/main/jni
+        # Переходим в папку 'src/main' внутри твоего репозитория.
+        # Важно: ndk-build по умолчанию ищет папки 'jni' (с Android.mk и Application.mk)
+        # относительно текущей директории, из которой он запущен.
+        # Поэтому, если твоя структура JNI_Project/src/main/jni,
+        # то cd src/main - это правильный путь.
+        cd src/main
+        # Запускаем сборку. NDK сам найдет Android.mk и Application.mk в папке jni.
+        ndk-build
+      # Если у тебя возникнут проблемы со сборкой, и ты увидишь ошибки,
+      # связанные с Android.mk, Application.mk или поиском исходников,
+      # возможно, тебе придется немного настроить свои mk-файлы,
+      # или скорректировать этот cd-путь, если твоя структура отличается.
+      # Но, судя по твоей структуре, src/main должно быть ок.
 
-    - name: Upload compiled libraries (Optional) # Шаг 7: Сохраняем скомпилированные библиотеки
-      uses: actions/upload-artifact@v4
+    - name: Upload compiled libraries as an artifact (Optional) # Шаг 7: Сохраняем скомпилированные .so файлы.
+      uses: actions/upload-artifact@v4 # Используем официальное действие GitHub для загрузки артефактов.
       with:
-        name: jni-libraries
-        path: src/main/libs # Путь, где ndk-build обычно сохраняет скомпилированные .so файлы
-
+        name: jni-compiled-libraries # Имя архива, под которым ты сможешь скачать свои библиотеки.
+        path: src/main/libs # Путь, куда ndk-build по умолчанию сохраняет скомпилированные библиотеки (.so файлы).
+        # Этот путь должен содержать подпапки для разных архитектур (например, armeabi-v7a, arm64-v8a).
+        # Если ndk-build сохраняет их в другом месте (например, src/main/obj/local),
+        # то измени этот путь соответственно.
