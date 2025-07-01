@@ -1,0 +1,50 @@
+name: Build JNI with NDK
+
+on:
+  push:
+    branches:
+      - main # Запускать этот workflow, когда что-то пушится в ветку 'main'
+  pull_request:
+    branches:
+      - main # Запускать, когда создается pull request в ветку 'main'
+
+jobs:
+  build-jni:
+    runs-on: ubuntu-latest # Выбираем операционную систему: Ubuntu (Linux)
+
+    steps:
+    - name: Checkout repository # Шаг 1: Загружаем твой код из репозитория
+      uses: actions/checkout@v4
+
+    - name: Set up Java Development Kit # Шаг 2: Устанавливаем Java (нужно для Android SDK, который скачает NDK)
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Set up Android SDK # Шаг 3: Устанавливаем Android SDK (он нужен для NDK)
+      uses: android-actions/setup-android@v3
+
+    - name: Download and Unzip Android NDK r16b # Шаг 4: Скачиваем нужную версию NDK для Linux
+      run: |
+        wget https://dl.google.com/android/repository/android-ndk-r16b-linux-x86_64.zip -O android-ndk.zip
+        unzip android-ndk.zip -d "$HOME/android-ndk"
+        mv "$HOME/android-ndk/android-ndk-r16b" "$HOME/android-ndk/ndk-r16b"
+
+    - name: Add NDK to PATH # Шаг 5: Добавляем NDK в системные пути, чтобы ndk-build был доступен
+      run: |
+        echo "ANDROID_NDK_HOME=$HOME/android-ndk/ndk-r16b" >> $GITHUB_ENV
+        echo "$HOME/android-ndk/ndk-r16b" >> $GITHUB_PATH
+
+    - name: Build JNI Project # Шаг 6: Запускаем компиляцию JNI!
+      run: |
+        cd src/main # Переходим в папку, где лежит ваша папка 'jni'
+        ndk-build # NDK сам найдет Android.mk и Application.mk в src/main/jni
+
+    - name: Upload compiled libraries (Optional) # Шаг 7: Сохраняем скомпилированные библиотеки
+      uses: actions/upload-artifact@v4
+      with:
+        name: jni-libraries
+        path: src/main/libs # Путь, где ndk-build обычно сохраняет скомпилированные .so файлы
+    ```
+
