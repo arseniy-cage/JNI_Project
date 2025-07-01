@@ -46,5 +46,4 @@ jobs:
       with:
         name: jni-libraries
         path: src/main/libs # Путь, где ndk-build обычно сохраняет скомпилированные .so файлы
-    ```
 
